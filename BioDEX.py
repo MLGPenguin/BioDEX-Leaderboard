@@ -69,6 +69,9 @@ class database:
         score = self.executeCommand("SELECT Score FROM scores WHERE id = ?", (name.lower(),)).fetchone()
         return score[0] if score != None else None
     
+    def getEntries(self, id: str):
+        return self.executeCommand("SELECT * FROM entries WHERE submitter = ? ORDER BY time DESC", (id.lower(),)).fetchall()
+    
     def getName(self, id: str):
         name = self.executeCommand("SELECT Name FROM scores WHERE id = ?", (id.lower(),)).fetchone()
         return name[0] if name != None else None
@@ -94,31 +97,7 @@ class database:
         return self.contains("id", name.lower())
 
 db = database()
-LBlabels = []    
 currentlyLoggedIn = None
-
-def updateLeaderboard():
-    '''Fills the leaderboard frame with the top 10 entries.'''
-    global LBlabels, currentlyLoggedIn
-    it = 1
-    position = -1 if currentlyLoggedIn == None or not db.containsUser(currentlyLoggedIn) else db.getLeaderboardPosition(currentlyLoggedIn)
-    for entry in db.getLeaderboard():
-        color = "red" if it == position else None
-        label = Label(rightFrame, text=f"{it}. {entry[0]}: {entry[1]}", font = 10, anchor='w', highlightthickness=2, highlightbackground=color)
-        label.pack(fill="both", padx=5, pady=5)
-        LBlabels.append(label)
-        it+=1
-
-def destroyLabels():
-    '''Removes all entries in the leaderboard from the leaderboard frame.'''
-    for label in LBlabels:
-        label.destroy()
-
-def refreshLeaderboard():
-    '''API method for combining the above two methods, as they will be required to be used in tandem often'''
-    destroyLabels()
-    updateLeaderboard()
-
 
 root  =  Tk()  # create root window
 root.title("BioDex")
@@ -138,8 +117,51 @@ image  =  PhotoImage(file='tree1.png')
 originalImage  =  image.subsample(5,5)
 Label(leftFrame,  image=originalImage, bg ='#cccccc').pack(fill='both',  padx=5,  pady=5)
 
+
+
 #Leaderboard section/right frame
-Label(rightFrame,  text='   Leaderboard   ', font='16' ).pack(fill='both',  padx=5,  pady=5)
+LBlabels = [] 
+lbheader = Label(rightFrame,  text='   Leaderboard   ', font='16' )
+lbheader.pack(fill='both',  padx=5,  pady=5)
+
+def updateLeaderboard():
+    '''Fills the leaderboard frame with the top 10 entries.'''
+    global LBlabels, currentlyLoggedIn
+    it = 1
+    position = -1 if currentlyLoggedIn == None or not db.containsUser(currentlyLoggedIn) else db.getLeaderboardPosition(currentlyLoggedIn)
+    lbheader.config(text='   Leaderboard   ')
+    for entry in db.getLeaderboard():
+        color = "red" if it == position else None
+        label = Label(rightFrame, text=f"{it}. {entry[0]}: {entry[1]}", font = 10, anchor='w', highlightthickness=2, highlightbackground=color)
+        label.pack(fill="both", padx=5, pady=5)
+        LBlabels.append(label)
+        it+=1
+
+def destroyLabels():
+    '''Removes all entries in the leaderboard from the leaderboard frame.'''
+    for label in LBlabels:
+        label.destroy()
+
+def refreshLeaderboard():
+    '''API method for combining the above two methods, as they will be required to be used in tandem often'''
+    destroyLabels()
+    updateLeaderboard()
+
+def displayEntries():
+    global currentlyLoggedIn
+    if currentlyLoggedIn == None:
+        messagebox.showerror("Error", "You must be logged in to do this")
+        return
+    entries = db.getEntries(currentlyLoggedIn)[0:9]
+    lbheader.config(text="   Collected   ")
+    if entries == None:
+        return
+    destroyLabels()
+    for entry in entries:
+        label = Label(rightFrame, text=f"{entry[1]}: {entry[2]}", font=10, anchor='w')
+        label.pack(fill="both", padx=5, pady=5)
+        LBlabels.append(label)
+
 updateLeaderboard()
 
 userBar  =  Frame(leftFrame,  width=90,  height=185,  bg='#cc0000')
@@ -196,7 +218,7 @@ Label(scoreBar,  textvariable=score, font= '10',  relief=RAISED).pack(anchor='n'
 
 
 # Buttons, only triggers a message atm
-Button(userBar,  text="Collected",  command=clicked).pack(padx=5,  pady=5)
+Button(userBar,  text="Collected",  command=displayEntries).pack(padx=5,  pady=5)
 Button(userBar,  text="New Capture",  command=clicked).pack(padx=5,  pady=5)
 Button(scoreBar,  text="Orientation",  command=clicked).pack(padx=5,  pady=5)
 Button(scoreBar,  text="Resize",  command=clicked).pack(padx=5,  pady=5)
