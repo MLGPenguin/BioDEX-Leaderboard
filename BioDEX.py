@@ -176,6 +176,8 @@ def clicked():
     '''if button is clicked, print button clicked'''
     print("Button clicked!!")
 
+
+
 #display login
 def logIn(logOn):
     '''Handles the log-in logic (updating the leaderboard and creating any new accounts)'''
@@ -189,7 +191,23 @@ def logIn(logOn):
         db.newUser(currentlyLoggedIn)
     refreshLeaderboard()
     updateScore()
-    return messagebox.showinfo('message',f'{db.getName(logOn)} has logged on!')
+    return messagebox.showinfo('message',f'{db.getName(logOn)} will ' + str(logFun.get()) +'!')
+
+#Log in/off system and entry box lockout
+def logOff(event):
+    '''Updates logFun variable for use in the logIn function.
+    Also controls the Entry box state to block or allow modification based on logged in or not'''
+    global logFun
+    global userInput
+    global log
+    if (logFun.get() == 'Log In'):
+        logFun = StringVar(root, value = 'Log Off')
+        userInput.config(state = 'disabled')
+        return logFun.get() 
+    else:
+        logFun = StringVar(root, value = 'Log In')
+        userInput.config(state = 'normal')
+        return logFun.get()
 
 #User input for username
 #user = StringVar(userBar, value='Enter Username, then press Enter')
@@ -209,9 +227,11 @@ def updateScore():
     text = "Score" if newscore == None else "Score: " + str(newscore)
     score.set(text)
 
+#Input for user login system
+logFun = StringVar(root, value = 'Log In')
 
 # Displays current User name and score
-Button(userBar,  text = 'Press Enter',  command = lambda: logIn(userInput.get()),  relief=RAISED).pack(anchor='n',  padx=5,  pady=3,  ipadx=10)
+log = Button(userBar,  text = 'Log In/Off',  command =lambda:[logIn(userInput.get()), logOff(str(logFun.get()))],  relief=RAISED).pack(anchor='n',  padx=5,  pady=3,  ipadx=10)
 Label(scoreBar,  textvariable=score, font= '10',  relief=RAISED).pack(anchor='n',  padx=5,  pady=3,  ipadx=10)
 
 
