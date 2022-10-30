@@ -11,10 +11,9 @@ All of the above in an interface (Enter UserID to get score, etc.) - tkinter.
 '''
 
 import sqlite3 as sql
-from multiprocessing.sharedctypes import Value
 from tkinter import *
 from tkinter import messagebox
-from turtle import update
+import datetime
 
 CATCH_OF_THE_DAY_MULTIPLIER = 3
 
@@ -22,7 +21,8 @@ class database:
     def __init__(self):
         '''Initialises the database connection and creates any non-existing tables.'''
         self.connection = sql.connect("users.sqlite")
-        self.executeCommand("CREATE TABLE IF NOT EXISTS scores(id varchar, name varchar, score int, PRIMARY KEY (id))")
+        self.executeCommand("CREATE TABLE IF NOT EXISTS scores(id varchar(12), name varchar(12), score int, PRIMARY KEY (id))")
+        self.executeCommand("CREATE TABLE IF NOT EXISTS entries(submitter varchar(12), type varchar, points_awarded int, time TIMESTAMP)")
 
     def executeCommand(self, cmd: str, params: tuple = ()):
         '''Executes a command through the connection'''
@@ -37,13 +37,18 @@ class database:
         '''returns the highest score in the database'''
         return self.executeCommand("SELECT MAX(score) FROM scores").fetchone()[0]
 
-    def newEntry(self, name: str):
-        '''Creates a new entbry if it doesn't already exist, populates with default values.'''
+    def newUser(self, name: str):
+        '''Creates a new user if they don't already exist, populates with default values.'''
         score = 0
         id = name.lower()
         if self.contains("id", id):
             return
-        self.executeCommand(f"INSERT INTO scores VALUES (?, ?, ?)", (id, name, score))
+        self.executeCommand("INSERT INTO scores VALUES (?, ?, ?)", (id, name, score))
+        self.connection.commit()
+
+    def newRecord(self, id: str, type: str, points: int):
+        '''Inserts a new record when a user would submit an image '''
+        self.executeCommand("INSERT INTO entries VALUES(?, ?, ?, ?)", (id.lower(), type, points, datetime.datetime.now().replace(microsecond=0)))
         self.connection.commit()
 
     def setScore(self, name: str, score: int):
@@ -144,7 +149,6 @@ scoreBar  =  Frame(leftFrame,  width=90,  height=185,  bg='#cc0000')
 scoreBar.pack(side='right',  fill='both',  padx=5,  pady=5,  expand=True)
 
 
-
 #button function
 def clicked():
     '''if button is clicked, print button clicked'''
@@ -160,7 +164,7 @@ def logIn(logOn):
         return
     currentlyLoggedIn = logOn
     if not db.containsUser(currentlyLoggedIn):
-        db.newEntry(currentlyLoggedIn)
+        db.newUser(currentlyLoggedIn)
     refreshLeaderboard()
     updateScore()
     return messagebox.showinfo('message',f'{db.getName(logOn)} has logged on!')
