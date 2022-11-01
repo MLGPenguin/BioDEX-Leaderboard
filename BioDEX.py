@@ -200,10 +200,12 @@ def logOff(event):
     global logFun
     global userInput
     global log
-    if (logFun.get() == 'Log In'):
+    if (logFun.get() == 'Log In') and not currentlyLoggedIn == None:
         logFun = StringVar(root, value = 'Log Off')
         userInput.config(state = 'disabled')
         return logFun.get() 
+    elif (logFun.get() == 'Log In') and not currentlyLoggedIn == '':
+        return 
     else:
         logFun = StringVar(root, value = 'Log In')
         userInput.config(state = 'normal')
