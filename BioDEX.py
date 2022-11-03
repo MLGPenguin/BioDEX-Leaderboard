@@ -250,6 +250,7 @@ def logOff(event):
     global logFun
     global userInput
     global log
+    global currentlyLoggedIn
     if (logFun.get() == 'Log In'):
         logFun = StringVar(root, value = 'Log Off')
         userInput.config(state = 'disabled')
@@ -257,6 +258,7 @@ def logOff(event):
     else:
         logFun = StringVar(root, value = 'Log In')
         userInput.config(state = 'normal')
+        currentlyLoggedIn = None
         return logFun.get()
 
 #User input for username
@@ -295,10 +297,14 @@ def onClickNewCapture():
     messagebox.showinfo("Success", f"Congratulations! You have captured a {type} worth {points} points!")
     refreshRightFrame()
 
+def onClickCollected():
+    global showingLeaderboard
+    if showingLeaderboard: displayEntries()
+    else: refreshLeaderboard()
 
 # Buttons, only triggers a message atm
 # TODO change the middle columnn with statistics.
-Button(userBar,  text="Collected",  command=displayEntries).pack(padx=5,  pady=5)
+Button(userBar,  text="Collected",  command=onClickCollected).pack(padx=5,  pady=5)
 Button(userBar,  text="New Capture",  command=onClickNewCapture).pack(padx=5,  pady=5)
 Button(scoreBar,  text="Orientation",  command=clicked).pack(padx=5,  pady=5)
 Button(scoreBar,  text="Resize",  command=clicked).pack(padx=5,  pady=5)
