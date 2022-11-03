@@ -233,6 +233,9 @@ def logIn(logOn):
     if len(logOn) > 12:
         messagebox.showerror('Error', "Your name may not contain more than 12 characters.")
         return
+    elif len(logOn) == 0: 
+        messagebox.showerror("Error", "You must specify a username.")
+        return
     currentlyLoggedIn = logOn
     if not db.containsUser(currentlyLoggedIn):
         db.newUser(currentlyLoggedIn)
