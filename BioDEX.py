@@ -89,8 +89,8 @@ class database:
         self.connection.commit()
         if addpoints: self.addScore(id, points)
     
-    def getHighestScore(self, id):
-        species = self.executeCommand("SELECT type, points_awarded FROM entries WHERE submitter=? ORDER BY points_awarded ASC", (id.lower(),)).fetchall()
+    def getHighestScore(self, id: str):
+        species = self.executeCommand("SELECT type, points_awarded FROM entries WHERE submitter=? ORDER BY points_awarded DESC", (id.lower(),)).fetchall()
         return None if species == None or len(species) == 0 else species[0][0]
 
     def setScore(self, name: str, score: int):
@@ -234,6 +234,7 @@ def logIn(logOn):
     '''Handles the log-in logic (updating the leaderboard and creating any new accounts)'''
     global currentlyLoggedIn
     logOn = userInput.get()
+    logOn = logOn.strip()
     if len(logOn) > 12:
         messagebox.showerror('Error', "Your name may not contain more than 12 characters.")
         return
@@ -303,6 +304,7 @@ def onClickNewCapture():
     db.newRecord(currentlyLoggedIn, type, points, True)
     messagebox.showinfo("Success", f"Congratulations! You have captured a {type} worth {points} points!")
     refreshRightFrame()
+    setStatistics()
 
 def onClickCollected():
     global showingLeaderboard
