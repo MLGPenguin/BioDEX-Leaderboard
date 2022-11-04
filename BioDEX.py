@@ -15,8 +15,45 @@ from time import time
 from tkinter import *
 from tkinter import messagebox
 import datetime
+import random
 
 CATCH_OF_THE_DAY_MULTIPLIER = 3
+SPECIES_SCORES = {
+    "Tree": 10, 
+    "Special Tree": 25, 
+    "Bush": 5,
+    "Bird": 30,
+    "Insect": 10,
+    "Pelican": 50,
+    "Bat": 40,
+    "DoDo": 1000
+    }
+
+def getRarities():
+    '''
+    Determines a relative probability for each species dependent on the score received for submitting them as defined 
+    in the dictionary SPECIES_SCORES above, 
+    This will be removed in a future version when a rarity can be calculated based on global data.
+    '''
+    global SPECIES_SCORES
+    sumProbability = 0
+    newProbabilities = {}
+    for species in SPECIES_SCORES: sumProbability += (1/SPECIES_SCORES[species])
+    for species in SPECIES_SCORES: newProbabilities[species] = ((1/SPECIES_SCORES[species])/sumProbability)
+    return newProbabilities
+
+def getRandomSpecies():
+    ''' Chooses a random species from the list dependent on rarity '''
+    rand = random.random()
+    species = getRarities()
+    i = 0
+    for s in species:
+        rand -= species[s]
+        if rand <= 0:
+            return s
+    return None
+
+
 
 class database:
     def __init__(self):
@@ -47,10 +84,15 @@ class database:
         self.executeCommand("INSERT INTO scores VALUES (?, ?, ?)", (id, name, score))
         self.connection.commit()
 
-    def newRecord(self, id: str, type: str, points: int):
+    def newRecord(self, id: str, type: str, points: int, addpoints: bool):
         '''Inserts a new record when a user would submit an image '''
         self.executeCommand("INSERT INTO entries VALUES(?, ?, ?, ?)", (id.lower(), type, points, datetime.datetime.now().replace(microsecond=0)))
         self.connection.commit()
+        if addpoints: self.addScore(id, points)
+    
+    def getHighestScore(self, id: str):
+        species = self.executeCommand("SELECT type, points_awarded FROM entries WHERE submitter=? ORDER BY points_awarded DESC", (id.lower(),)).fetchall()
+        return None if species == None or len(species) == 0 else species[0][0]
 
     def setScore(self, name: str, score: int):
         '''Sets the score of the user.'''
@@ -125,10 +167,12 @@ Label(leftFrame,  image=originalImage, bg ='#cccccc').pack(fill='both',  padx=5,
 LBlabels = [] 
 lbheader = Label(rightFrame,  text='   Leaderboard   ', font='16' )
 lbheader.pack(fill='both',  padx=5,  pady=5)
+showingLeaderboard = True
 
 def updateLeaderboard():
     '''Fills the leaderboard frame with the top 10 entries.'''
-    global LBlabels, currentlyLoggedIn
+    global LBlabels, currentlyLoggedIn, showingLeaderboard
+    showingLeaderboard = True
     it = 1
     position = -1 if currentlyLoggedIn == None or not db.containsUser(currentlyLoggedIn) else db.getLeaderboardPosition(currentlyLoggedIn)
     lbheader.config(text='   Leaderboard   ')
@@ -149,8 +193,15 @@ def refreshLeaderboard():
     destroyLabels()
     updateLeaderboard()
 
+def refreshRightFrame():
+    global showingLeaderboard, currentlyLoggedIn
+    destroyLabels()
+    if showingLeaderboard or currentlyLoggedIn == None: updateLeaderboard()
+    else: displayEntries()
+
 def displayEntries():
-    global currentlyLoggedIn
+    global currentlyLoggedIn, showingLeaderboard
+    showingLeaderboard = False
     if currentlyLoggedIn == None:
         messagebox.showerror("Error", "You must be logged in to do this")
         return
@@ -185,8 +236,12 @@ def logIn(logOn):
     '''Handles the log-in logic (updating the leaderboard and creating any new accounts)'''
     global currentlyLoggedIn
     logOn = userInput.get()
+    logOn = logOn.strip()
     if len(logOn) > 12:
         messagebox.showerror('Error', "Your name may not contain more than 12 characters.")
+        return
+    elif len(logOn) == 0: 
+        messagebox.showerror("Error", "You must specify a username.")
         return
     currentlyLoggedIn = logOn
     if not db.containsUser(currentlyLoggedIn):
@@ -203,13 +258,18 @@ def logOff(event):
     global logFun
     global userInput
     global log
+    global currentlyLoggedIn
     if (logFun.get() == 'Log In') and not currentlyLoggedIn == None:
         logFun = StringVar(root, value = 'Log Off')
         userInput.config(state = 'disabled')
+        setStatistics()
         return logFun.get() 
     else:
         logFun = StringVar(root, value = 'Log In')
         userInput.config(state = 'normal')
+        currentlyLoggedIn = None
+        refreshRightFrame()
+        setStatistics()
         return logFun.get()
 
 #User input for username
@@ -237,15 +297,43 @@ logFun = StringVar(root, value = 'Log In')
 log = Button(userBar,  text = 'Log In/Off',  command =lambda:[logIn(userInput.get()), logOff(str(logFun.get()))],  relief=RAISED).pack(anchor='n',  padx=5,  pady=3,  ipadx=10)
 Label(scoreBar,  textvariable=score, font= '10',  relief=RAISED).pack(anchor='n',  padx=5,  pady=3,  ipadx=10)
 
+def onClickNewCapture():
+    global currentlyLoggedIn
+    if currentlyLoggedIn == None:
+        messagebox.showerror("Error", "You must be logged in to do this.")
+        return
+    type = getRandomSpecies()
+    points = SPECIES_SCORES[type]
+    db.newRecord(currentlyLoggedIn, type, points, True)
+    messagebox.showinfo("Success", f"Congratulations! You have captured a {type} worth {points} points!")
+    refreshRightFrame()
+    setStatistics()
+
+def onClickCollected():
+    global showingLeaderboard
+    if showingLeaderboard: displayEntries()
+    else: refreshLeaderboard()
+
+def setStatistics():
+    global currentlyLoggedIn
+    if currentlyLoggedIn == None:
+        total.config(text="Total Collected")
+        highest.config(text="Top Entry")
+    else:
+        total.config(text=f"Total Collected: {len(db.getEntries(currentlyLoggedIn))}")
+        score = db.getHighestScore(currentlyLoggedIn)
+        highest.config(text=(f"Top Entry" if score == None else f"Top Entry: {score}"))
 
 
+Button(userBar,  text="Collected",  command=onClickCollected).pack(padx=5,  pady=5)
+Button(userBar,  text="New Capture",  command=onClickNewCapture).pack(padx=5,  pady=5)
+total = Label(scoreBar,  text="Total Collected")
+total.pack(padx=5,  pady=5)
 
-# Buttons, only triggers a message atm
-Button(userBar,  text="Collected",  command=displayEntries).pack(padx=5,  pady=5)
-Button(userBar,  text="New Capture",  command=clicked).pack(padx=5,  pady=5)
-Button(scoreBar,  text="Orientation",  command=clicked).pack(padx=5,  pady=5)
-Button(scoreBar,  text="Resize",  command=clicked).pack(padx=5,  pady=5)
-Button(scoreBar,  text="Filters",  command=clicked).pack(padx=5,  pady=5)
+highest = Label(scoreBar,  text="Top Entry")
+highest.pack(padx=5,  pady=5)
+
+# Button(scoreBar,  text="Filters",  command=clicked).pack(padx=5,  pady=5)
 
 root.mainloop()
 db.connection.close()
