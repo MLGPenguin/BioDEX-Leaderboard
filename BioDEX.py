@@ -88,6 +88,10 @@ class database:
         self.executeCommand("INSERT INTO entries VALUES(?, ?, ?, ?)", (id.lower(), type, points, datetime.datetime.now().replace(microsecond=0)))
         self.connection.commit()
         if addpoints: self.addScore(id, points)
+    
+    def getHighestScore(self, id):
+        species = self.executeCommand("SELECT type, points_awarded FROM entries WHERE submitter=? ORDER BY points_awarded ASC", (id.lower(),)).fetchall()
+        return None if species == None or len(species) == 0 else species[0][0]
 
     def setScore(self, name: str, score: int):
         '''Sets the score of the user.'''
@@ -188,9 +192,9 @@ def refreshLeaderboard():
     updateLeaderboard()
 
 def refreshRightFrame():
-    global showingLeaderboard
+    global showingLeaderboard, currentlyLoggedIn
     destroyLabels()
-    if showingLeaderboard: updateLeaderboard()
+    if showingLeaderboard or currentlyLoggedIn == None: updateLeaderboard()
     else: displayEntries()
 
 def displayEntries():
@@ -254,11 +258,14 @@ def logOff(event):
     if (logFun.get() == 'Log In'):
         logFun = StringVar(root, value = 'Log Off')
         userInput.config(state = 'disabled')
+        setStatistics()
         return logFun.get() 
     else:
         logFun = StringVar(root, value = 'Log In')
         userInput.config(state = 'normal')
         currentlyLoggedIn = None
+        refreshRightFrame()
+        setStatistics()
         return logFun.get()
 
 #User input for username
@@ -302,13 +309,26 @@ def onClickCollected():
     if showingLeaderboard: displayEntries()
     else: refreshLeaderboard()
 
-# Buttons, only triggers a message atm
-# TODO change the middle columnn with statistics.
+def setStatistics():
+    global currentlyLoggedIn
+    if currentlyLoggedIn == None:
+        total.config(text="Total Collected")
+        highest.config(text="Top Entry")
+    else:
+        total.config(text=f"Total Collected: {len(db.getEntries(currentlyLoggedIn))}")
+        score = db.getHighestScore(currentlyLoggedIn)
+        highest.config(text=(f"Top Entry" if score == None else f"Top Entry: {score}"))
+
+
 Button(userBar,  text="Collected",  command=onClickCollected).pack(padx=5,  pady=5)
 Button(userBar,  text="New Capture",  command=onClickNewCapture).pack(padx=5,  pady=5)
-Button(scoreBar,  text="Orientation",  command=clicked).pack(padx=5,  pady=5)
-Button(scoreBar,  text="Resize",  command=clicked).pack(padx=5,  pady=5)
-Button(scoreBar,  text="Filters",  command=clicked).pack(padx=5,  pady=5)
+total = Label(scoreBar,  text="Total Collected")
+total.pack(padx=5,  pady=5)
+
+highest = Label(scoreBar,  text="Top Entry")
+highest.pack(padx=5,  pady=5)
+
+# Button(scoreBar,  text="Filters",  command=clicked).pack(padx=5,  pady=5)
 
 root.mainloop()
 db.connection.close()
