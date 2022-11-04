@@ -11,6 +11,7 @@ All of the above in an interface (Enter UserID to get score, etc.) - tkinter.
 '''
 
 import sqlite3 as sql
+from time import time
 from tkinter import *
 from tkinter import messagebox
 import datetime
@@ -138,6 +139,7 @@ class database:
     def containsUser(self, name: str) -> bool:
         return self.contains("id", name.lower())
 
+    
 db = database()
 currentlyLoggedIn = None
 
@@ -248,6 +250,7 @@ def logIn(logOn):
     updateScore()
     return messagebox.showinfo('message',f'{db.getName(logOn)} will ' + str(logFun.get()) +'!')
 
+
 #Log in/off system and entry box lockout
 def logOff(event):
     '''Updates logFun variable for use in the logIn function.
@@ -256,7 +259,7 @@ def logOff(event):
     global userInput
     global log
     global currentlyLoggedIn
-    if (logFun.get() == 'Log In'):
+    if (logFun.get() == 'Log In') and not currentlyLoggedIn == None:
         logFun = StringVar(root, value = 'Log Off')
         userInput.config(state = 'disabled')
         setStatistics()
@@ -274,7 +277,7 @@ def logOff(event):
 
 userInput = Entry(userBar, justify = 'center')
 userInput.insert(END, 'Enter Username')
-userInput.bind('<Return>', logIn)
+userInput.bind('<Return>', (lambda event:[logIn(userInput.get()), logOff(str(logFun.get()))] ))
 userInput.pack(anchor='n',  padx=5,  pady=3,  ipadx=10)
 
 
